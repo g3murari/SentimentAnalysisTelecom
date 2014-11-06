@@ -24,8 +24,8 @@ options(RCurlOptions = list(cainfo = system.file("CurlSSL", "cacert.pem",
 reqURL = "https://api.twitter.com/oauth/request_token"
 accessURL = "https://api.twitter.com/oauth/access_token"
 authURL = "https://api.twitter.com/oauth/authorize"
-consumerKey = "*****FillKeyHere*****"
-consumerSecret = "*****FillKeyHere*****"
+consumerKey = "*****EnterKey*****"
+consumerSecret = "*****EnterKey*****"
 twitterCred = OAuthFactory$new(consumerKey = consumerKey,
 					consumerSecret = consumerSecret, requestURL = reqURL,
 					accessURL = accessURL, authURL = authURL)
@@ -36,8 +36,8 @@ registerTwitterOAuth(twitterCred)
 
 ## b) Go to https://developers.facebook.com/apps and create a new application. 
 ##	Use the data from the new application below.
-##fbOAuth = fbOAuth(app_id="*****FillKeyHere*****", 
-##				app_secret="*****FillKeyHere*****")
+##fbOAuth = fbOAuth(app_id="*****EnterKey*****", 
+##				app_secret="*****EnterKey*****")
 ## Ensure to perform the copy paste site URL from R to the facebook App page 
 ##	after the above step.
 ##save(fbOAuth, file="fboauth")
@@ -46,14 +46,24 @@ registerTwitterOAuth(twitterCred)
 ## 	not advisable to use the facebook app anymore. The temp tokens are valid
 ## 	2 hours. Get it from https://developers.facebook.com/tools/explorer and
 ##	set API version to Unversioned. Copy the generated token here.
-fbToken = "*****FillKeyHere*****"
+fbToken = "*****EnterKey*****"
 
 ## Step 2: 
 ## a) Now, let us collect the data from twitter for the month of October
 ##	2014. Let us use the same 5000 feeds as allocated by the social media
 ## 	analytics tool trial version.
-OctTweets = searchTwitter("uninor", n = 5000, lang = "en", since = '2014-10-01', 
-				until = '2014-10-31') ## 13.49 secs for 100 tweets
+## OctTweets = searchTwitter("uninor", n = 5000, lang = "en", since = '2014-10-01', 
+## 				until = '2014-10-31') ## 13.49 secs for 100 tweets
+## Since searchTwitter has a limitation of max 160 tweets... loop.
+OctTweets = list()
+dates = paste("2014-10-",01:31,sep="")
+for (i in 2:length(dates)) {
+  ## print(paste(dates[i-1], dates[i]))
+  OctTweets = c(OctTweets, 
+	searchTwitter("uninor", since = dates[i-1], until = dates[i], 
+		n = 160 , lang = "en"))
+}
+				
 ## let us do the geocode (lat, long, radius) later. 
 ##	eg: geocode='42.375,-71.1061111,10mi'
 ## Let us now extract the text out of the tweets. 'text' is the field name.
@@ -65,8 +75,7 @@ OctTweetsText = sapply(OctTweets, function(x) x$getText())
 OctFB = searchFacebook(string = "uninor", token = fbToken, n = 5000, 
 			since = URLencode("01 october 2014 00:00"), 
 			until = URLencode("31 october 2014 23:59")) ## 0.7 s for 11 posts
-## let us do the geocode (lat, long, radius) later. Since Uninor is only in 
-##	India not used for this project
+## let us do the geocode (lat, long, radius) later. 
 ##	eg: geocode='42.375,-71.1061111,10mi'
 ## Let us now extract the text out of the tweets. 'text' is the field name.
 OctFBText = OctFB$message
@@ -154,14 +163,14 @@ ggplot(mentionsDF, aes(x=emotion)) +
 	labs(x="emotion categories", y="number of mentions") +
 	ggtitle("Sentiment Analysis of Mentions about Telecom (by emotion)")
 	
-# Polarity Graph...
+## Polarity Graph...
 ggplot(mentionsDF, aes(x=polarity)) +
 	geom_bar(aes(y=..count.., fill=polarity)) +
 	scale_fill_brewer(palette="RdGy") +
 	labs(x="polarity categories", y="number of mentions") +
 	ggtitle("Sentiment Analysis of Mentions about Telecom (by polarity)")
 
-# separating text by emotion
+## separating text by emotion
 poles = levels(factor(mentionsDF$polarity))
 npoles = length(poles)
 pol.docs = rep("", npoles)
@@ -171,15 +180,15 @@ for (i in 1:npoles)
    pol.docs[i] = paste(tmp, collapse=" ")
 }
 
-# remove stopwords
+## remove stopwords
 pol.docs = removeWords(pol.docs, stopwords("english"))
 
-# create corpus
+## create corpus
 corpus = Corpus(VectorSource(pol.docs))
 tdm = TermDocumentMatrix(corpus)
 tdm = as.matrix(tdm)
 colnames(tdm) = poles
 
-# comparison word cloud
+## comparison word cloud
 comparison.cloud(tdm, colors = brewer.pal(npoles, "Dark2"),
    scale = c(3,.5), random.order = FALSE, title.size = 1.5)
